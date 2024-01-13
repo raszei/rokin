@@ -1,0 +1,564 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.4.20.2.js"></script>
+    <link href="https://fonts.cdnfonts.com/css/monster-chiller" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/adlam-display" rel="stylesheet">
+    <title>Raszei</title>
+</head>
+<body>
+    <header>
+        <h1>Chlopaki z Raszei</h1>
+        <nav>
+            <ul>
+                <li>
+                    <butoon id="chat-mode">Chat mode</butoon>
+                </li>
+            </ul>
+        </nav>
+        <input type="color" value="#233111" id="color">
+        <div class="online">
+            <div></div>
+            <p></p>
+        </div>
+    </header>
+    <main>
+        <div class="video">
+            <div class="video-frame">
+                <iframe src="//ok.ru/videoembed/6537282264794" frameborder="0" allow="autoplay" allowfullscreen></iframe>
+            </div>
+        </div>
+        <div class="chat">
+            <div class="chat-frame">
+                <div class="chat-frame-box">
+                </div>
+            </div>
+        </div>
+
+    </main>
+    <footer><p>#FreeRaszei</p></footer>
+    <div class="age hide">
+        <div class="age-content">
+            <p>Strona przeznaczona dla osób pełnoletnich</p>
+            <b>Czy masz ukończone 18 lat?</b>
+            <nav>
+                <button id="accept-age">Tak, wchodzę</button>
+                <a href="https://google.com">Nie, wychodzę</a>
+            </nav>
+        </div>
+    </div>
+</body>
+<script>
+
+
+
+    class Online {
+        constructor({publishKey, subscribeKey, channels}) {
+            const pubnub = new PubNub({publishKey, subscribeKey, heartbeatInterval: 30});
+            this.setOnline(0);
+            pubnub.hereNow({channels}, (s, res) => {
+                console.log('online', res.channels[channels[1]].occupancy);
+                this.setOnline(res.channels[channels[0]].occupancy)
+            });
+            pubnub.addListener({presence: (e) => {
+                if(e.channel === channels[1]) console.log('online', e.occupancy);
+                if(e.channel === channels[0])this.setOnline(e.occupancy);
+            }});
+            pubnub.subscribe({channels, withPresence: true});
+        }
+        setOnline(numberOfUsers) {
+            document.querySelector('header .online p').innerText = numberOfUsers.toString();
+
+        }
+    }
+    class Age {
+        sessionKey = ''
+        constructor(sessionKey) {
+            this.sessionKey = sessionKey;
+            const ageAccept = sessionStorage.getItem(this.sessionKey);
+            if(!ageAccept) document.querySelector('.age').classList.remove('hide')
+            document.querySelector('#accept-age').onclick = () => this.Accept();
+        }
+        Accept() {
+            sessionStorage.setItem(this.sessionKey, '1');
+            document.querySelector('.age').classList.add('accept')   ;
+        }
+    }
+    class Fixes {
+        constructor() {
+            this.tinyFix();
+            this.chatangoFix();
+        }
+        tinyFix() {
+            let interval = setInterval(() => {
+                let s = document.body.getAttribute('style');
+                if(!s) return;
+                clearInterval(interval);
+                document.body.setAttribute('style', '')
+            }, 10)
+        }
+        chatangoFix() {
+            document.addEventListener("touchmove", (e) => {
+                if(window.innerWidth < 600 && window.innerWidth < window.innerHeight) e.preventDefault();
+            }, { passive: false });
+        }
+    }
+    class Chat {
+        id = null;
+        colors = null;
+        constructor(id, colors) {
+            this.id = id
+            this.colors = colors
+            document.querySelector('#chat-mode').onclick = () => {
+                document.querySelector('.chat').classList.toggle('mode')
+                this.reload();
+            }
+            this.createChat()
+        }
+        reload() {
+            if(document.querySelector('.chat iframe')) document.querySelector('.chat iframe').remove()
+            if(document.querySelector('.chat script')) document.querySelector('.chat script').remove();
+            this.createChat();
+        }
+        createChat() {
+            const p_prime = document.createElement('script')
+            p_prime.id = this.id
+            p_prime.src = '//st.chatango.com/js/gz/emb.js'
+            p_prime.style = 'width: 100%; height: 100%';
+            p_prime.innerHTML = `                        {
+                            "handle":"raszeifree",
+                            "arch":"js",
+                            "styles":{
+                                "a":"${this.colors.bg}",
+                                "b":100,
+                                "c":"${this.colors.text}",
+                                "d":"${this.colors.text}",
+                                "e":"${this.colors.accent_1}",
+                                "g":"${this.colors.text}",
+                                "h":"${this.colors.accent_1}",
+                                "j":"${this.colors.text}",
+                                "k":"${this.colors.text}",
+                                "l":"${this.colors.bg}",
+                                "m":"${this.colors.text}",
+                                "n":"${this.colors.text}",
+                                "q":"${this.colors.bg}",
+                                "sbc": "${this.colors.accent_1}",
+                                "p":"10",
+                                "r":100,
+                                "t":0,
+                                "surl":0,
+                                "allowpm":0,
+                                "cnrs":"0.7",
+                                "useonm": 1
+                            }
+                        }`
+            setTimeout(() => {
+                document.querySelector('.chat .chat-frame-box').appendChild(p_prime)
+            }, 300)
+        }
+    }
+
+    class App {
+        constructor() {
+            let colors = {
+                bg: '',
+                text: '',
+                accent_1: '',
+                accent_2: '',
+                accent_3: '',
+            }
+            let colorMain = localStorage.getItem('color1') || '#171515';
+            document.querySelector('#color').value = colorMain;
+            const setColor = () => {
+                colors.bg = colorMain;
+                localStorage.setItem('color1', colorMain)
+                colors.text = LightenDarkenColor(colorMain, 255);
+                colors.accent_1 = LightenDarkenColor(colorMain, 25);
+                colors.accent_2 = LightenDarkenColor(colorMain, 50);
+                colors.accent_3 = LightenDarkenColor(colorMain, 75);
+                const r = document.querySelector(':root');
+                Object.keys(colors).forEach(key => {
+                    r.style.setProperty('--' + key, colors[key]);
+                })
+            }
+            setColor();
+            new Fixes();
+            const chat = new Chat('cid0020000365917331013', colors);
+            new Age('age');
+            new Online({
+                publishKey : 'pub-c-ee7d48df-000a-4799-a5e3-baed4828db5b',
+                subscribeKey : 'sub-c-f2a8ae39-640d-4729-8aaa-679bf9e264c8',
+                channels: ['robale', 'onl']
+            });
+
+
+
+
+            document.querySelector('#color').addEventListener('change', () => {
+                colorMain = document.querySelector('#color').value;
+                setColor();
+                chat.reload();
+            })
+
+
+        }
+    }
+
+    new App();
+
+
+
+    function LightenDarkenColor(hexColor, magnitude) {
+        hexColor = hexColor.replace(`#`, ``);
+        if (hexColor.length === 6) {
+            const decimalColor = parseInt(hexColor, 16);
+            let r = (decimalColor >> 16) + magnitude;
+            r > 255 && (r = 255);
+            r < 0 && (r = 0);
+            let g = (decimalColor & 0x0000ff) + magnitude;
+            g > 255 && (g = 255);
+            g < 0 && (g = 0);
+            let b = ((decimalColor >> 8) & 0x00ff) + magnitude;
+            b > 255 && (b = 255);
+            b < 0 && (b = 0);
+            return `#${(g | (b << 8) | (r << 16)).toString(16)}`;
+        } else {
+            return hexColor;
+        }
+    }
+
+
+</script>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        outline: none;
+        color: var(--text);
+        border: none;
+        box-shadow: none;
+        text-shadow: none;
+        box-sizing: border-box;
+        background: none;
+        font-family: 'ADLaM Display', sans-serif;
+        font-size: 13px;
+        font-weight: 400;
+        list-style: none;
+        text-decoration: none;
+    }
+    body {
+        background-image: url("https://img.freepik.com/premium-wektory/wzor-z-tlo-wektor-robaki-i-robaki-oble_104589-980.jpg");
+        background-color: var(--bg);
+        background-position: center;
+        background-blend-mode: darken;
+        min-height: calc(100svh);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+    }
+    #color {
+        height: 33px;
+        border-radius: 10px;
+        background-color: var(--accent_1);
+        padding: 5px;
+        cursor: pointer;
+        margin-left: 20px;
+    }
+    body > div[style] {
+        visibility: hidden;
+    }
+    header,
+    footer,
+    main {
+        width: 1750px;
+        max-width: calc(100% - 40px);
+        margin: 0 auto;
+    }
+    .age {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100svh;
+        background-color: rgba(0,0,0,0.75);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: 0.3s;
+    }
+    .age.hide,
+    .age.accept {
+        opacity: 0;
+        pointer-events: none;
+    }
+    .age.accept .age-content {
+        transform: translateY(-20px);
+    }
+    .age-content {
+        width: 600px;
+        max-width: calc(100% - 40px);
+        border-radius: 10px;
+        padding: 20px;
+        background-color: var(--accent_1);
+        box-shadow: 0 0 20px rgba(0,0,0,0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        transition: 0.3s;
+    }
+    .age-content p,
+    .age-content b {
+        font-size: 16px;
+        text-align: center;
+    }
+    .age-content nav {
+        width: max-content;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 10px 0 -10px 0;
+    }
+    .age-content nav a,
+    .age-content nav button {
+        height: 44px;
+        padding: 0 20px;
+        background-color: var(--accent_2);
+        margin: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .age-content nav a:hover,
+    .age-content nav button:hover {
+        background-color: var(--accent_3);
+    }
+    header {
+        margin: 20px auto;
+        display: flex;
+        align-items: center;
+    }
+    footer {
+        height: 33px;
+        margin: 20px auto;
+        display: flex;
+        align-items: center;
+    }
+    footer p {
+        font-size: 16px;
+    }
+    main {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    header h1 {
+        font-family: 'Monster Chiller', sans-serif;
+        font-size: 33px;
+        line-height: 33px;
+        margin-top: -4px;
+    }
+    nav {
+        margin-left: auto;
+    }
+    nav ul {
+        margin: -10px;
+    }
+    nav ul li a {
+        padding: 5px 10px;
+        font-size: 16px;
+        transition: 0.3s;
+    }
+
+    nav ul li a:hover {
+        color: #ff5454;
+    }
+    .online {
+        margin-left: 20px;
+        display: flex;
+        align-items: center;
+        background-color: var(--accent_1);
+        padding: 10px 20px;
+        border-radius: 10px;
+    }
+    .online div {
+        background-color: #5fff54;
+        width: 13px;
+        height: 13px;
+        border-radius: 100%;
+        margin-right: 10px;
+    }
+    .online p {
+        font-size: 16px;
+        line-height: 12px;
+        padding-bottom: 1px;
+    }
+    .video {
+        width: 1280px;
+        overflow: hidden;
+        border-radius: 10px;
+    }
+    .video-frame {
+        width: 100%;
+        padding-top: 56.25%;
+        position: relative;
+    }
+    .video-frame iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+    .chat {
+        margin-left: 20px;
+        overflow: hidden;
+        border-radius: 10px;
+        width: 450px;
+        overscroll-behavior: contain;
+    }
+    .chat-frame {
+        position: relative;
+        width: 100%;
+        padding-top: 160%;
+        overscroll-behavior: contain;
+
+    }
+    .chat-frame iframe {
+        overscroll-behavior: contain;
+        * {
+            overscroll-behavior: contain;
+        }
+    }
+    .chat-frame-box {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: calc(100% + 10px);
+        height: calc(100% + 45px);
+        margin-left: -5px;
+        margin-top: -45px;
+    }
+    #chat-mode {
+        display: none;
+    }
+    @media only screen and (max-width: 1400px) {
+        body {
+            justify-content: flex-start;
+        }
+        @media (orientation: portrait) {
+            .online {
+                padding: 10px;
+                margin-left: 10px;
+            }
+            .online p {
+                font-size: 13px;
+            }
+            #chat-mode {
+                display: inline;
+                padding: 5px 10px;
+                font-size: 13px;
+                transition: 0.3s;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            #color {
+                margin-left: 10px;
+            }
+
+            #chat-mode:hover {
+                color: #ff5454;
+            }
+        }
+
+
+        header h1 {
+            font-size: 18px;
+            line-height: 18px;
+            margin-top: 0px;
+        }
+        main {
+            flex-direction: column;
+        }
+        .video {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .video-frame {
+            width: 100%;
+        }
+        .chat {
+            width: 100%;
+            margin-left: 0;
+        }
+        .chat-frame {
+            width: 100%;
+            padding-top: 0;
+        }
+
+        .chat {
+            min-height: 300px;
+            height: calc(100svh - 73px - calc((100vw - 40px) * 0.5625) - 40px);
+        }
+        @media (orientation: portrait) {
+            .chat.mode {
+                transition: height 0.3s;
+                width: calc(100% - 40px);
+                height: calc(100svh - 73px - 20px);
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+            }
+        }
+        .chat-frame {
+            height: 100%;
+        }
+
+        footer {
+            display: none;
+        }
+        body {
+            background-image: none;
+        }
+    }
+
+    @media only screen and (max-width: 900px) {
+        header,
+        main {
+            width: 600px;
+        }
+    }
+    @media only screen and (max-width: 600px) {
+        body {
+            min-height: 0px;
+            justify-content: flex-start;
+            background-image: none;
+        }
+        .chat {
+            min-height: 0px;
+
+        }
+        @media (orientation: landscape) {
+            body {
+                overflow: hidden;
+                position: fixed;
+            }
+            .chat {
+                position: fixed;
+                bottom: 20px;
+                max-width: calc(100% - 40px);
+            }
+        }
+    }
+
+</style>
+</html>
